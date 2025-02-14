@@ -86,6 +86,7 @@ def set_reminder(message, task_id, bot):
         scheduler.schedule_reminder(message.chat.id, task_id, reminder_time, bot)  # ✅ Новый вызов
 
         bot.send_message(message.chat.id, f'✅ Напоминание установлено на {reminder_time.strftime("%Y-%m-%d %H:%M:%S")}!')
+        main_menu(message, bot)  # Отправляем главное меню
 
     except ValueError:
         bot.send_message(message.chat.id, '❌ Неверный формат! Используйте DD-MM-YYYY HH:MM:SS.')
@@ -111,7 +112,9 @@ def call_del(call, bot):
 def call_show(call, bot):
     tasks = db_fetchall("SELECT Task FROM Adds WHERE ChatID = ?", (call.message.chat.id,))
     text = '\n'.join([f"{i+1}. {task[0]}" for i, task in enumerate(tasks)]) if tasks else '📭 Записей нет.'
-    bot.send_message(call.message.chat.id, f'📋 Ваши записи:\n{text}')
+    markup = types.InlineKeyboardMarkup()
+    markup.add(types.InlineKeyboardButton("Главное меню", callback_data='main_menu'))  # Новая кнопка
+    bot.send_message(call.message.chat.id, f'📋 Ваши записи:\n{text}', reply_markup=markup)
 
 def call_set_reminder(call, bot):
     task_id = int(call.data.replace('set_reminder_', ''))
@@ -158,23 +161,20 @@ def call_reminder_template(call, bot):
 def call_delete_task(call, bot):
     task_id = int(call.data.replace('delete_task_', ''))
     
-    # 1. Удаляем напоминания из планировщика и таблицы Reminders
+    # Удаляем напоминания и задачи
     reminders = db_fetchall("SELECT Id FROM Reminders WHERE TaskID = ?", (task_id,))
     for reminder in reminders:
         reminder_id = reminder[0]
         job_id = f'reminder_{reminder_id}'
         try:
-            scheduler.remove_job(job_id)  # Удаляем задачу из планировщика
+            scheduler.remove_job(job_id)
         except JobLookupError:
             pass
-        db_execute("DELETE FROM Reminders WHERE Id = ?", (reminder_id,))  # Удаляем запись из Reminders
+        db_execute("DELETE FROM Reminders WHERE Id = ?", (reminder_id,))
     
-    # 2. Теперь удаляем саму задачу из Adds
-    success = db_execute("DELETE FROM Adds WHERE Id = ?", (task_id,))
+    # Удаляем задачу
+    db_execute("DELETE FROM Adds WHERE Id = ?", (task_id,))
     
-    if success:
-        bot.send_message(call.message.chat.id, '🗑️ Запись удалена!')
-    else:
-        bot.send_message(call.message.chat.id, '❌ Ошибка при удалении записи!')
-    
-    main_menu(call.message, bot)
+    # Редактируем исходное сообщение вместо отправки нового
+    bot.answer_callback_query(call.id, "🗑️ Запись удалена!")
+    main_menu(call.message, bot)  # Отправляем главное меню
