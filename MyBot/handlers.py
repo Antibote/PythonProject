@@ -2,6 +2,7 @@ import datetime
 from telebot import types
 from database import db_execute, db_fetchall
 import scheduler  # Теперь импортируем ТОЛЬКО scheduler, а не send_reminder
+from apscheduler.jobstores.base import JobLookupError
 
 
 def send_reminder(chat_id, task_id, bot):
@@ -116,7 +117,7 @@ def call_set_reminder(call, bot):
     task_id = int(call.data.replace('set_reminder_', ''))
     set_reminder_template(call, task_id, bot)
 
-from apscheduler.jobstores.base import JobLookupError
+
 
 def call_reminder_template(call, bot):
     """Функция для установки напоминания через кнопки."""
