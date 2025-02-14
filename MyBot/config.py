@@ -1,4 +1,4 @@
 import os
 
-TOKEN = os.getenv('BOT_TOKEN', '7863067253:AAF03zsdZSx7wzem0RAhtcs4a44D9WiObmg')
+TOKEN = os.getenv('BOT_TOKEN', 'какой-то токен')
 DB_PATH = "daily_planner.db"
